@@ -20,7 +20,7 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:4200"],  # Angular dev server
+    allow_origins=["http://localhost:4200"], 
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -38,6 +38,9 @@ class_labels = dataset.classes
 #     "document_type": None
 # }
 
+train_document_classifier()
+
+
 # Make sure storage directory exists
 os.makedirs("storage/docs", exist_ok=True)
 
@@ -49,7 +52,7 @@ async def upload_document(files: List[UploadFile] = File(...),document_type: str
     """
     results =[]
 
-    train_document_classifier()
+    
 
     for file in files:
         file_bytes = await file.read()
@@ -131,10 +134,12 @@ async def chat_bot(question: str = Form(...)):
 
     for file in os.listdir("storage/docs"):
         if file.endswith(".json"):
-            with open(os.path.join("storage/docs", file), "r",encoding="utf-8") as f:
-                data=json.load(f)
-                all_texts +=data.get("raw_text","")+"\n\n"
-
+            try:
+                with open(os.path.join("storage/docs", file), "r",encoding="utf-8") as f:
+                    data=json.load(f)
+                    all_texts +=data.get("raw_text","")+"\n\n"
+            except UnicodeDecodeError as e:
+                print(f"Encoding error in file: {file} – {e}")
 
     if not all_texts.strip():
         return {"error":"Now documents found"}
