@@ -1,3 +1,24 @@
-<app-upload></app-upload>
-<hr>
-<app-chat></app-chat>
+<div class="app-container">
+  <header class="app-header">
+    <h1>{{ title }}</h1>
+    <nav class="nav-tabs">
+      <button 
+        class="nav-tab"
+        [class.active]="activeTab === 'upload'"
+        (click)="switchTab('upload')">
+        📁 Upload Documents
+      </button>
+      <button 
+        class="nav-tab"
+        [class.active]="activeTab === 'chat'"
+        (click)="switchTab('chat')">
+        💬 Chat
+      </button>
+    </nav>
+  </header>
+
+  <main class="app-main">
+    <app-upload *ngIf="activeTab === 'upload'"></app-upload>
+    <app-chat *ngIf="activeTab === 'chat'"></app-chat>
+  </main>
+</div>

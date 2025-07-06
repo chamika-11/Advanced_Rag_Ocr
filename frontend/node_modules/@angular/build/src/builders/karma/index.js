@@ -99,6 +99,7 @@ function getBuiltInKarmaConfig(workspaceRoot, projectName) {
     // Any changes to the config here need to be synced to: packages/schematics/angular/config/files/karma.conf.js.template
     return {
         basePath: '',
+        rootUrl: '/',
         frameworks: ['jasmine'],
         plugins: [
             'karma-jasmine',
@@ -106,6 +107,9 @@ function getBuiltInKarmaConfig(workspaceRoot, projectName) {
             'karma-jasmine-html-reporter',
             'karma-coverage',
         ].map((p) => workspaceRootRequire(p)),
+        proxies: {
+            '/': '/base/',
+        },
         jasmineHtmlReporter: {
             suppressAll: true, // removes the duplicated traces
         },

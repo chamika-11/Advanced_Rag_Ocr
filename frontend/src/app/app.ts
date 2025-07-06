@@ -1,12 +1,16 @@
+// src/app/app.component.ts
 import { Component } from '@angular/core';
-import { RouterOutlet } from '@angular/router';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet],
-  templateUrl: './app.html',
-  styleUrl: './app.css'
+  templateUrl: './app.component.html',
+  styleUrls: ['./app.component.css']
 })
-export class App {
-  protected title = 'frontend';
+export class AppComponent {
+  title = 'Document Processing App';
+  activeTab = 'upload';
+
+  switchTab(tab: string) {
+    this.activeTab = tab;
+  }
 }
