@@ -1,1 +1,8 @@
-<p>document-chat works!</p>
+<h2>Ask Question</h2>
+<input type="text" [(ngModel)]="question" placeholder="Enter question">
+<button (click)="ask()">Ask</button>
+
+<div *ngIf="answer">
+  <h3>Answer:</h3>
+  <p>{{ answer }}</p>
+</div>

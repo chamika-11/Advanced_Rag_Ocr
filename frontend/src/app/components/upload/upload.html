@@ -1,0 +1,10 @@
+<p>upload works!</p>
+<h2>Upload Document</h2>
+<input type="file" (change)="onFileChange($event)" multiple>
+<input type="text" [(ngModel)]="documentType" placeholder="Enter Document Type">
+<button (click)="upload()">Upload</button>
+
+<div *ngIf="result">
+  <h3>Result:</h3>
+  <pre>{{ result | json }}</pre>
+</div>
