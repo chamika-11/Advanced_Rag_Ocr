@@ -20,7 +20,7 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:4200"], 
+    allow_origins=["http://localhost:3000"], 
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -134,12 +134,21 @@ async def chat_bot(question: str = Form(...)):
 
     for file in os.listdir("storage/docs"):
         if file.endswith(".json"):
+            file_path=os.path.join("storage/docs",file)
             try:
-                with open(os.path.join("storage/docs", file), "r",encoding="utf-8") as f:
+                with open(file_path,"r",encoding="utf-8") as f:
                     data=json.load(f)
-                    all_texts +=data.get("raw_text","")+"\n\n"
-            except UnicodeDecodeError as e:
-                print(f"Encoding error in file: {file} – {e}")
+            except UnicodeDecodeError:
+
+                try:
+                    with open(file_path,"r", encoding="latin-1") as f:
+                        data=json.load(f)
+                except Exception as e:
+                    print(f"Skipped file due to decoding error: {file}-{e}")
+                    continue
+
+                all_texts+= data.get("raw_text","") + "\n\n"
+            
 
     if not all_texts.strip():
         return {"error":"Now documents found"}

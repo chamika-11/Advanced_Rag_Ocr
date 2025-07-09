@@ -33,7 +33,7 @@ def deskew_image(image):
     center=(w//2,h//2)
 
     M=cv2.getRotationMatrix2D(center,angle,1.0)
-    rotated=cv2.warpAffince(image,M,(w,h),flags=cv2.INTER_CUBIC,borderMode=cv2.BORDER_REPLICATE)
+    rotated=cv2.warpAffine(image,M,(w,h),flags=cv2.INTER_CUBIC,borderMode=cv2.BORDER_REPLICATE)
 
     return rotated
 
