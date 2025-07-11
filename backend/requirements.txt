@@ -16,3 +16,5 @@ pdf2image
 langchain-together 
 langchain-community
 torchvision
+faiss-cpu 
+sentence-transformers

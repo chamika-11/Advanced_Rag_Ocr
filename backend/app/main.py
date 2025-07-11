@@ -1,7 +1,9 @@
 import datetime
 import json
+import logging
+import traceback
 import uuid
-from fastapi import FastAPI, UploadFile, File, Form
+from fastapi import FastAPI, HTTPException, UploadFile, File, Form
 from ocr_engine import extract_text
 from classifier import train_document_classifier
 from classifier import predict_document_type
@@ -14,6 +16,14 @@ from PIL import Image
 import os
 from datetime import datetime
 from typing import List
+from chunk import chunk_text
+from vector_store import save_vector_index, store_document,hybrid_search
+import uuid
+from langchain.docstore.document import Document
+from langchain_community.llms import Together
+from langchain.chains.question_answering import load_qa_chain
+from fastapi import Form
+from vector_store import load_vector_index
 
 
 app = FastAPI()
@@ -26,6 +36,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+load_vector_index()
 
 # Prepare class labels at startup
 dataset = ImageFolder("data/classification")
@@ -51,8 +62,6 @@ async def upload_document(files: List[UploadFile] = File(...),document_type: str
     Extract raw text + structured data for each, and save as individual JSONs.
     """
     results =[]
-
-    
 
     for file in files:
         file_bytes = await file.read()
@@ -84,24 +93,26 @@ async def upload_document(files: List[UploadFile] = File(...),document_type: str
 
 
             combined_text=extract_text(temp_img_path)
-            doc_type+predict_document_type(temp_img_path, class_labels=class_labels)
+            doc_type = predict_document_type(temp_img_path, class_labels=class_labels)
             os.remove(temp_img_path)
 
 
         structured_data=extract_structured_data(combined_text)
-        # text = extract_text("uploaded.jpg")
-        # structured_data = extract_structured_data(text)
-        # doc_type = predict_document_type("uploaded.jpg", class_labels=class_labels)
-        
-        # store results
-        # doc_store["ocr_text"] = text
-        # doc_store["structured_data"] = structured_data
-        # doc_store["document_type"] = doc_type
+
+        doc_id=str(uuid.uuid4())
+        text_blob=json.dumps(structured_data,indent=2)
+
+        #store in a vector
+        store_document(doc_id,text_blob,metadata={
+            "filename": file.filename,
+            "doc_type":doc_type,
+        })
 
         #store permanetly
-        timestamp = datetime.now().timestamp()
-        filename=f"{doc_type}_{timestamp}.json"
+        filename = f"{doc_type}_{doc_id}.json"
         filepath=os.path.join("storage/docs",filename)
+
+        
 
         with open (filepath,"w") as f:
             json.dump({
@@ -116,7 +127,8 @@ async def upload_document(files: List[UploadFile] = File(...),document_type: str
                 "document_type":doc_type,
                 "structured_data":structured_data
             })
-
+            
+    save_vector_index()
     
     return {
         "message": f"{len(files)} document(s) processed successfully.",
@@ -124,38 +136,68 @@ async def upload_document(files: List[UploadFile] = File(...),document_type: str
     }
 
 
-
 @app.post("/chat/")
 async def chat_bot(question: str = Form(...)):
     """
-    Search all previously uploaded documents and answer using RAG.
+    Perform hybrid search and LLM-based RAG via ask_question().
+    Includes robust error handling.
     """
-    all_texts = ""
+    try:
+        if not question.strip():
+            raise HTTPException(status_code=400, detail="Question must not be empty.")
+        
+        answer = ask_question(question)
 
-    for file in os.listdir("storage/docs"):
-        if file.endswith(".json"):
-            file_path=os.path.join("storage/docs",file)
-            try:
-                with open(file_path,"r",encoding="utf-8") as f:
-                    data=json.load(f)
-            except UnicodeDecodeError:
+        if not answer or not answer.strip():
+            return {"answer": "No meaningful response found."}
 
-                try:
-                    with open(file_path,"r", encoding="latin-1") as f:
-                        data=json.load(f)
-                except Exception as e:
-                    print(f"Skipped file due to decoding error: {file}-{e}")
-                    continue
+        return {"answer": answer}
+    
+    except HTTPException as http_err:
+        raise http_err
 
-                all_texts+= data.get("raw_text","") + "\n\n"
+    except Exception as e:
+        logging.error("Unhandled error in /chat/: %s", traceback.format_exc())
+        return {
+            "error": "An internal error occurred while processing your request.",
+            "details": str(e)
+        }
+
+
+
+
+# @app.post("/chat/")
+# async def chat_bot(question: str = Form(...)):
+#     """
+#     Search all previously uploaded documents and answer using RAG.
+#     """
+
+#     all_texts = ""
+
+#     for file in os.listdir("storage/docs"):
+#         if file.endswith(".json"):
+#             file_path=os.path.join("storage/docs",file)
+#             try:
+#                 with open(file_path,"r",encoding="utf-8") as f:
+#                     data=json.load(f)
+#             except UnicodeDecodeError:
+
+#                 try:
+#                     with open(file_path,"r", encoding="latin-1") as f:
+#                         data=json.load(f)
+#                 except Exception as e:
+#                     print(f"Skipped file due to decoding error: {file}-{e}")
+#                     continue
+
+#                 all_texts+= data.get("raw_text","") + "\n\n"
             
 
-    if not all_texts.strip():
-        return {"error":"Now documents found"}
+#     if not all_texts.strip():
+#         return {"error":"Now documents found"}
     
-    answer=ask_question(all_texts,question)
+#     answer=ask_question(all_texts,question)
 
 
-    return {
-        "answer":answer
-    }
+#     return {
+#         "answer":answer
+#     }
