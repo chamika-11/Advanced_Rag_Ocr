@@ -8,17 +8,17 @@ nlp=spacy.load("en_core_web_sm")
 def extract_refex(text):
     data={}
     #regex patterns
-    date_pattern = r"\b(?:\d{1,2}[/-])?(?:\d{1,2}[/-])?\d{2,4}\b"
+    # date_pattern = r"\b(?:\d{1,2}[/-])?(?:\d{1,2}[/-])?\d{2,4}\b"
     amount_pattern = r"\$\s?\d+(?:,\d{3})*(?:\.\d{2})?"
-    # id_pattern = r"\b[0-9]{6,12}\b"
+    id_pattern = r"\b[0-9]{10,12}\b"
 
-    dates=re.findall(date_pattern,text)
+    # dates=re.findall(date_pattern,text)
     amounts=re.findall(amount_pattern,text)
-    # ids=re.findall(id_pattern,text)
+    ids=re.findall(id_pattern,text)
 
-    if dates:data["dates"]=dates
+    # if dates:data["dates"]=dates
     if amounts:data["amounts"]=amounts
-    # if ids:data["possible_ids"]=ids
+    if ids:data["possible_ids"]=ids
 
     return data
 

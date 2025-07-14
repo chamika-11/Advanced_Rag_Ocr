@@ -4,6 +4,7 @@ import axios from 'axios';
 function OcrUpload({ onResults }) {
   const [files, setFiles] = useState([]);
   const [results, setResults] = useState([]);
+  const [loading, setLoading] = useState(false);
 
   const handleFileChange = (e) => {
     setFiles(e.target.files);
@@ -17,6 +18,7 @@ function OcrUpload({ onResults }) {
     }
 
     try {
+      setLoading(true);
       const res = await axios.post('http://localhost:8000/upload-document/', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
@@ -25,6 +27,8 @@ function OcrUpload({ onResults }) {
       onResults(data);
     } catch (err) {
       console.error('Upload failed:', err);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -38,12 +42,14 @@ function OcrUpload({ onResults }) {
           multiple
           onChange={handleFileChange}
           className="w-full sm:w-1/2 border border-gray-300 px-4 py-2 rounded-lg"
-        />  
+        />
         <button
           type="submit"
-          className="w-full sm:w-auto bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition"
+          disabled={loading}
+          className={`w-full sm:w-auto px-6 py-2 rounded-lg font-semibold text-white transition 
+            ${loading ? 'bg-gray-500 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'}`}
         >
-          Upload & Process
+          {loading ? 'Uploading...' : 'Upload & Process'}
         </button>
       </form>
 
