@@ -100,13 +100,24 @@ async def upload_document(files: List[UploadFile] = File(...),document_type: str
         structured_data=extract_structured_data(combined_text)
 
         doc_id=str(uuid.uuid4())
-        text_blob=json.dumps(structured_data,indent=2)
 
-        #store in a vector
-        store_document(doc_id,text_blob,metadata={
-            "filename": file.filename,
-            "doc_type":doc_type,
-        })
+
+        chunks=chunk_text(combined_text,max_words=300)
+        for chunk in chunks:
+            store_document(str(uuid.uuid4()),chunk,metadata={
+                "filename":file.filename,
+                "doc_type":doc_type,
+            })
+
+
+
+        # text_blob=json.dumps(structured_data,indent=2)
+
+        # #store in a vector
+        # store_document(doc_id,text_blob,metadata={
+        #     "filename": file.filename,
+        #     "doc_type":doc_type,
+        # })
 
         #store permanetly
         filename = f"{doc_type}_{doc_id}.json"
@@ -114,7 +125,7 @@ async def upload_document(files: List[UploadFile] = File(...),document_type: str
 
         
 
-        with open (filepath,"w") as f:
+        with open(filepath, "w", encoding="utf-8") as f:
             json.dump({
                 "document_type":doc_type,
                 "raw_text":combined_text,
