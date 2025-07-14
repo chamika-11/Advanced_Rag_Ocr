@@ -34,14 +34,17 @@ def search_documents(query, top_k=3):
     return results
 
 
-###################
-def save_vector_index(path="faiss_index.index", meta_path="doc_metadata.json"):
+
+def save_vector_index(path="faissFile/faiss_index.index", meta_path="faissFile/faiss_index.json"):
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+
     faiss.write_index(index, path)
+    os.makedirs(os.path.dirname(meta_path), exist_ok=True)
     with open(meta_path, "w", encoding="utf-8") as f:
         json.dump(doc_metadata, f, ensure_ascii=False, indent=2)
 
 
-def load_vector_index(path="faiss_index.index", meta_path="doc_metadata.json"):
+def load_vector_index(path="faissFile/faiss_index.index", meta_path="faissFile/faiss_index.json"):
     global index, doc_metadata
     if os.path.exists(path):
         index = faiss.read_index(path)

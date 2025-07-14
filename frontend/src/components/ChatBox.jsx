@@ -21,55 +21,31 @@ function RagChat() {
     }
   };
 
-  const styles = {
-    form: {
-      marginTop: '2rem',
-      display: 'flex',
-      alignItems: 'center',
-      gap: '1rem',
-    },
-    input: {
-      width: '60%',
-      padding: '0.5rem',
-      borderRadius: '5px',
-      border: '1px solid #ccc',
-    },
-    button: {
-      padding: '0.5rem 1rem',
-      backgroundColor: '#28A745',
-      color: 'white',
-      border: 'none',
-      borderRadius: '5px',
-      cursor: 'pointer',
-    },
-    answerBox: {
-      marginTop: '1rem',
-      background: '#e9f7ef',
-      padding: '1rem',
-      borderRadius: '5px',
-      border: '1px solid #c3e6cb',
-    },
-  };
-
   return (
-    <div>
-      <form onSubmit={handleAskQuestion} style={styles.form}>
-        <h3>❓ Ask a Question:</h3>
+    <div className="max-w-3xl mx-auto p-6 mt-10 bg-white shadow-md rounded-xl">
+      <h2 className="text-2xl font-bold mb-6 text-gray-800 text-center">
+        Deep Search
+      </h2>
+
+      <form onSubmit={handleAskQuestion} className="flex flex-col sm:flex-row gap-4 items-center justify-center">
         <input
           type="text"
           placeholder="Type your question here..."
           value={question}
           onChange={(e) => setQuestion(e.target.value)}
-          style={styles.input}
+          className="w-full sm:w-3/4 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
         />
-        <button type="submit" style={styles.button}>
-          Ask
+        <button
+          type="submit"
+          className="px-6 py-2 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition"
+        >
+          Search
         </button>
       </form>
 
       {answer && (
-        <div style={styles.answerBox}>
-          <h4>💬 Answer:</h4>
+        <div className="mt-6 bg-green-50 border border-green-200 text-green-900 px-6 py-4 rounded-lg">
+          <h4 className="text-lg font-semibold mb-2">Data:</h4>
           <p>{answer}</p>
         </div>
       )}

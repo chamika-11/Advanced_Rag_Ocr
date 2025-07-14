@@ -3,7 +3,6 @@ import axios from 'axios';
 
 function OcrUpload({ onResults }) {
   const [files, setFiles] = useState([]);
-  const [docType, setDocType] = useState('');
   const [results, setResults] = useState([]);
 
   const handleFileChange = (e) => {
@@ -16,7 +15,6 @@ function OcrUpload({ onResults }) {
     for (const file of files) {
       formData.append('files', file);
     }
-    formData.append('document_type', docType);
 
     try {
       const res = await axios.post('http://localhost:8000/upload-document/', formData, {
@@ -24,74 +22,41 @@ function OcrUpload({ onResults }) {
       });
       const data = res.data.results || [];
       setResults(data);
-      onResults(data); 
+      onResults(data);
     } catch (err) {
       console.error('Upload failed:', err);
     }
   };
 
-  const styles = {
-    form: {
-      marginBottom: '2rem',
-      display: 'flex',
-      alignItems: 'center',
-      gap: '1rem',
-    },
-    input: {
-      padding: '0.5rem',
-      borderRadius: '5px',
-      border: '1px solid #ccc',
-      width: '250px',
-    },
-    button: {
-      padding: '0.5rem 1rem',
-      backgroundColor: '#007BFF',
-      color: 'white',
-      border: 'none',
-      borderRadius: '5px',
-      cursor: 'pointer',
-    },
-    listItem: {
-      background: '#f8f9fa',
-      border: '1px solid #ccc',
-      borderRadius: '6px',
-      padding: '1rem',
-      marginBottom: '1rem',
-    },
-    pre: {
-      background: '#f0f0f0',
-      padding: '0.75rem',
-      borderRadius: '4px',
-      overflowX: 'auto',
-    },
-  };
-
   return (
-    <div>
-      <form onSubmit={handleUpload} style={styles.form}>
-        <input type="file" multiple onChange={handleFileChange} />
+    <div className="max-w-3xl mx-auto p-6 mt-10 bg-white shadow-md rounded-xl">
+      <h2 className="text-2xl font-bold mb-6 text-gray-800 text-center">Upload Document</h2>
+
+      <form onSubmit={handleUpload} className="flex flex-col sm:flex-row gap-4 mb-6">
         <input
-          type="text"
-          placeholder="Document Type (e.g., Salary Slip, Loan Form)"
-          value={docType}
-          onChange={(e) => setDocType(e.target.value)}
-          style={styles.input}
-        />
-        <button type="submit" style={styles.button}>
+          type="file"
+          multiple
+          onChange={handleFileChange}
+          className="w-full sm:w-1/2 border border-gray-300 px-4 py-2 rounded-lg"
+        />  
+        <button
+          type="submit"
+          className="w-full sm:w-auto bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition"
+        >
           Upload & Process
         </button>
       </form>
 
       {results.length > 0 && (
-        <div>
-          <h3>📄 Processed Document Results</h3>
-          <ul>
+        <div className="mt-6">
+          <h3 className="text-xl font-semibold mb-4 text-gray-700">📄 Processed Document Results</h3>
+          <ul className="space-y-4">
             {results.map((r, idx) => (
-              <li key={idx} style={styles.listItem}>
-                <strong>File:</strong> {r.file}<br />
-                <strong>Detected Type:</strong> {r.document_type}<br />
-                <strong>Structured Data:</strong>
-                <pre style={styles.pre}>
+              <li key={idx} className="bg-green-50 border border-green-200 p-4 rounded-lg shadow-sm">
+                <p><strong>File:</strong> {r.file}</p>
+                <p><strong>Detected Type:</strong> {r.document_type}</p>
+                <p className="mt-2"><strong>Structured Data:</strong></p>
+                <pre className="bg-gray-100 p-3 rounded-lg overflow-x-auto text-sm">
                   {JSON.stringify(r.structured_data, null, 2)}
                 </pre>
               </li>
