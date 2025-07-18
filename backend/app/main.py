@@ -24,7 +24,8 @@ from langchain_community.llms import Together
 from langchain.chains.question_answering import load_qa_chain
 from fastapi import Form
 from vector_store import load_vector_index
-
+from preprocess import preprocess_image
+import cv2
 
 app = FastAPI()
 
@@ -70,6 +71,10 @@ async def upload_document(files: List[UploadFile] = File(...)):
             for i,img in enumerate(images):
                 temp_img_path=f"tempFile_{unique_id}_page_{i}.jpg"
                 img.save(temp_img_path,"JPEG")
+
+                preprocessed=preprocess_image(temp_img_path)
+                cv2.imwrite(temp_img_path,preprocessed)
+
                 page_text=extract_text(temp_img_path)
                 combined_text+=page_text+"\n\n"
                 os.remove(temp_img_path)
@@ -82,12 +87,16 @@ async def upload_document(files: List[UploadFile] = File(...)):
 
         else:
             temp_img_path=f"temp_{unique_id}.jpg"
+
             with open(temp_img_path,"wb") as f:
                 f.write(file_bytes)
 
+            preprocessed=preprocess_image(temp_img_path)
+            cv2.imwrite(temp_img_path,preprocessed)
 
             combined_text=extract_text(temp_img_path)
             doc_type = predict_document_type(temp_img_path, class_labels=class_labels)
+
             os.remove(temp_img_path)
 
 

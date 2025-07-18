@@ -15,7 +15,7 @@ def ask_question(query):
 
     llm = Together(
         model="mistralai/Mistral-7B-Instruct-v0.1",
-        temperature=0,
+        temperature=0.1,
         max_tokens=512
     )
 
@@ -33,8 +33,6 @@ Question: {question}
 Answer:"""
 
     )
-
-
 
     chain = load_qa_chain(llm, chain_type="stuff", prompt=qa_prompt)
 
