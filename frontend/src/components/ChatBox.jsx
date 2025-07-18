@@ -4,10 +4,14 @@ import axios from 'axios';
 function RagChat() {
   const [question, setQuestion] = useState('');
   const [answer, setAnswer] = useState('');
+  const [loading, setLoading] = useState(false); 
 
   const handleAskQuestion = async (e) => {
     e.preventDefault();
+    if (!question.trim()) return;
+
     try {
+      setLoading(true); 
       const res = await axios.post(
         'http://localhost:8000/chat/',
         new URLSearchParams({ question }),
@@ -18,6 +22,9 @@ function RagChat() {
       setAnswer(res.data.answer);
     } catch (err) {
       console.error('RAG question failed:', err);
+      setAnswer('❌ An error occurred while fetching the answer.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -37,9 +44,11 @@ function RagChat() {
         />
         <button
           type="submit"
-          className="px-6 py-2 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition"
+          disabled={loading}
+          className={`px-6 py-2 rounded-lg font-semibold text-white transition 
+            ${loading ? 'bg-gray-500 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'}`}
         >
-          Search
+          {loading ? 'Searching...' : 'Search'}
         </button>
       </form>
 

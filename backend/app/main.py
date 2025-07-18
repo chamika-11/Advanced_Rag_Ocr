@@ -24,7 +24,8 @@ from langchain_community.llms import Together
 from langchain.chains.question_answering import load_qa_chain
 from fastapi import Form
 from vector_store import load_vector_index
-
+from preprocess import preprocess_image
+import cv2
 
 app = FastAPI()
 
@@ -42,12 +43,6 @@ load_vector_index()
 dataset = ImageFolder("data/classification")
 class_labels = dataset.classes
 
-# Temporary memory
-# doc_store = {
-#     "ocr_text": None,
-#     "structured_data": None,
-#     "document_type": None
-# }
 
 train_document_classifier()
 
@@ -56,7 +51,7 @@ train_document_classifier()
 os.makedirs("storage/docs", exist_ok=True)
 
 @app.post("/upload-document/")
-async def upload_document(files: List[UploadFile] = File(...),document_type: str = Form(...)):
+async def upload_document(files: List[UploadFile] = File(...)):
     """
     Upload multiple documents (PDFs or images). For PDFs, process all pages.
     Extract raw text + structured data for each, and save as individual JSONs.
@@ -76,6 +71,10 @@ async def upload_document(files: List[UploadFile] = File(...),document_type: str
             for i,img in enumerate(images):
                 temp_img_path=f"tempFile_{unique_id}_page_{i}.jpg"
                 img.save(temp_img_path,"JPEG")
+
+                preprocessed=preprocess_image(temp_img_path)
+                cv2.imwrite(temp_img_path,preprocessed)
+
                 page_text=extract_text(temp_img_path)
                 combined_text+=page_text+"\n\n"
                 os.remove(temp_img_path)
@@ -88,12 +87,16 @@ async def upload_document(files: List[UploadFile] = File(...),document_type: str
 
         else:
             temp_img_path=f"temp_{unique_id}.jpg"
+
             with open(temp_img_path,"wb") as f:
                 f.write(file_bytes)
 
+            preprocessed=preprocess_image(temp_img_path)
+            cv2.imwrite(temp_img_path,preprocessed)
 
             combined_text=extract_text(temp_img_path)
             doc_type = predict_document_type(temp_img_path, class_labels=class_labels)
+
             os.remove(temp_img_path)
 
 
@@ -108,16 +111,6 @@ async def upload_document(files: List[UploadFile] = File(...),document_type: str
                 "filename":file.filename,
                 "doc_type":doc_type,
             })
-
-
-
-        # text_blob=json.dumps(structured_data,indent=2)
-
-        # #store in a vector
-        # store_document(doc_id,text_blob,metadata={
-        #     "filename": file.filename,
-        #     "doc_type":doc_type,
-        # })
 
         #store permanetly
         filename = f"{doc_type}_{doc_id}.json"
@@ -161,6 +154,9 @@ async def chat_bot(question: str = Form(...)):
 
         if not answer or not answer.strip():
             return {"answer": "No meaningful response found."}
+        
+        if "couldn't find the answer" in answer.lower():
+            return {"answer": "Sorry, I couldn’t find that in the uploaded documents."}
 
         return {"answer": answer}
     
@@ -175,40 +171,3 @@ async def chat_bot(question: str = Form(...)):
         }
 
 
-
-
-# @app.post("/chat/")
-# async def chat_bot(question: str = Form(...)):
-#     """
-#     Search all previously uploaded documents and answer using RAG.
-#     """
-
-#     all_texts = ""
-
-#     for file in os.listdir("storage/docs"):
-#         if file.endswith(".json"):
-#             file_path=os.path.join("storage/docs",file)
-#             try:
-#                 with open(file_path,"r",encoding="utf-8") as f:
-#                     data=json.load(f)
-#             except UnicodeDecodeError:
-
-#                 try:
-#                     with open(file_path,"r", encoding="latin-1") as f:
-#                         data=json.load(f)
-#                 except Exception as e:
-#                     print(f"Skipped file due to decoding error: {file}-{e}")
-#                     continue
-
-#                 all_texts+= data.get("raw_text","") + "\n\n"
-            
-
-#     if not all_texts.strip():
-#         return {"error":"Now documents found"}
-    
-#     answer=ask_question(all_texts,question)
-
-
-#     return {
-#         "answer":answer
-#     }
