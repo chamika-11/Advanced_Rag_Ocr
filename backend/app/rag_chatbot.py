@@ -5,6 +5,7 @@ from langchain.docstore.document import Document
 from dotenv import load_dotenv
 from vector_store import hybrid_search
 from langchain.prompts import PromptTemplate
+from langchain.chains.combine_documents import create_stuff_documents_chain
 
 load_dotenv()
 
@@ -19,23 +20,34 @@ def ask_question(query):
         max_tokens=512
     )
 
-    qa_prompt = PromptTemplate(
-        input_variables=["context", "question"],
-        template="""
-You are a helpful assistant. You must answer the question **only** based on the following context:
+    prompt = PromptTemplate(
+    input_variables=["context", "question"],
+    template="""You are a helpful assistant. Use ONLY the following context to answer the question.
+If the context does not provide enough information, say "Sorry, I couldn’t find that in the uploaded documents."
 
+Context:
 {context}
 
-If the answer is not in the context, reply:
-"I'm sorry, I couldn't find the answer in the provided documents."
-
 Question: {question}
+
 Answer:"""
+)
 
-    )
+    chain = create_stuff_documents_chain(llm=llm, prompt=prompt)
+    input_docs = [Document(page_content=doc["text"]) for doc in docs]
+    result = chain.invoke({
+        "context": "\n\n".join(doc.page_content for doc in input_docs),
+        "question": query
+    })
 
-    chain = load_qa_chain(llm, chain_type="stuff", prompt=qa_prompt)
-
-    input_docs=[Document(page_content=doc["text"]) for doc in docs]
-    result = chain.run(input_documents=input_docs, question=query)
     return result
+
+
+
+
+
+    # chain = load_qa_chain(llm, chain_type="stuff", prompt=prompt)
+
+    # input_docs=[Document(page_content=doc["text"]) for doc in docs]
+    # result = chain.run(input_documents=input_docs, question=query)
+    # return result

@@ -27,6 +27,10 @@ from vector_store import load_vector_index
 from preprocess import preprocess_image
 import cv2
 
+from langchain_together import Together
+
+
+
 app = FastAPI()
 
 app.add_middleware(
@@ -46,9 +50,10 @@ class_labels = dataset.classes
 
 train_document_classifier()
 
-
-# Make sure storage directory exists
 os.makedirs("storage/docs", exist_ok=True)
+
+llm = Together(model="mistralai/Mistral-7B-Instruct-v0.1") 
+chain = load_qa_chain(llm, chain_type="stuff")
 
 @app.post("/upload-document/")
 async def upload_document(files: List[UploadFile] = File(...)):
@@ -150,15 +155,23 @@ async def chat_bot(question: str = Form(...)):
         if not question.strip():
             raise HTTPException(status_code=400, detail="Question must not be empty.")
         
-        answer = ask_question(question)
-
-        if not answer or not answer.strip():
-            return {"answer": "No meaningful response found."}
-        
-        if "couldn't find the answer" in answer.lower():
+        docs=hybrid_search(question)
+        if not docs:
             return {"answer": "Sorry, I couldn’t find that in the uploaded documents."}
 
-        return {"answer": answer}
+        documents= [Document(page_content=doc["text"], metadata=doc["metadata"]) for doc in docs]
+
+        answer = chain.invoke({
+            "input_documents": documents,
+            "question": question
+        })
+        
+        answer_text = answer.get("output_text")
+
+        if not answer_text.strip():
+            return {"answer": "Sorry, I couldn’t find that in the uploaded documents."}
+
+        return {"answer": answer_text}
     
     except HTTPException as http_err:
         raise http_err
