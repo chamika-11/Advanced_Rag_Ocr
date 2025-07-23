@@ -18,3 +18,5 @@ langchain-community
 torchvision
 faiss-cpu 
 sentence-transformers
+
+

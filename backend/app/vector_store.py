@@ -3,7 +3,6 @@ import faiss
 import os
 import json
 
-
 #load the sentence transformer model
 embedding_model=SentenceTransformer('all-MiniLM-L6-v2')
 
@@ -11,7 +10,6 @@ embedding_model=SentenceTransformer('all-MiniLM-L6-v2')
 embedding_dim=384
 index=faiss.IndexFlatL2(embedding_dim)
 
-#storage for metadata
 doc_metadata=[]
 
 def store_document(doc_id,text,metadata={}):
@@ -32,7 +30,6 @@ def search_documents(query, top_k=3):
             print(f"FAISS returned index {idx}, but doc_metadata only has {len(doc_metadata)} entries")
 
     return results
-
 
 
 def save_vector_index(path="faissFile/faiss_index.index", meta_path="faissFile/faiss_index.json"):
@@ -61,17 +58,24 @@ def load_vector_index(path="faissFile/faiss_index.index", meta_path="faissFile/f
         print("Metadata file not found")
 
 
-def hybrid_search (query, top_k=3):
-    sem_results=search_documents(query, top_k=top_k)
+def hybrid_search (query, top_k=5):
+    model = SentenceTransformer("all-MiniLM-L6-v2")
+    query_vector=model.encode([query])
+    distances, indices=index.search(query_vector,top_k)
 
-    #keyword filtering
-    keyword_matches=[]
-    for doc in doc_metadata:
-        if query.lower() in doc["text"].lower():
-            keyword_matches.append(doc)
+    results=[]
 
+    for i,idx in enumerate(indices[0]):
+        if idx==-1:
+            continue
+        score=distances[0][i]
+        results.append({
+            "text":doc_metadata[idx]["text"],
+            "metadata":doc_metadata[idx],
+            "score":score
+        })
 
-    unique_results={doc["doc_id"]:doc for doc in sem_results+keyword_matches}
-
-    return list(list(unique_results.values())[:top_k])
-
+    if not results:
+        return None
+    
+    return results
