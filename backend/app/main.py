@@ -9,7 +9,9 @@ from classifier import train_document_classifier
 from classifier import predict_document_type
 from torchvision.datasets import ImageFolder
 from extract import extract_structured_data
-from rag_chatbot import ask_question
+from datetime import datetime
+import traceback
+from typing import Optional
 from pdf2image import convert_from_bytes
 from fastapi.middleware.cors import CORSMiddleware
 from PIL import Image
@@ -26,12 +28,43 @@ from fastapi import Form
 from vector_store import load_vector_index
 from preprocess import preprocess_image
 import cv2
-
+from vector_store import load_vector_index, save_vector_index, store_document
+from agentic_rag import create_agentic_rag_system
+from contextlib import asynccontextmanager
+from fastapi import FastAPI
 from langchain_together import Together
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Initialize everything on startup."""
+    global agentic_system
+    
+    # Load existing vector index
+    load_vector_index()
+    
+    dataset = ImageFolder("data/classification")
+    class_labels = dataset.classes
+
+    train_document_classifier()
+    
+    # Create directories
+    os.makedirs("storage/docs", exist_ok=True)
+    os.makedirs("storage/conversations", exist_ok=True)
+    
+    # Initialize agentic RAG system
+    agentic_system = create_agentic_rag_system()
+    
+    logging.info("Agentic RAG system initialized successfully")
+
+    llm = Together(model="mistralai/Mistral-7B-Instruct-v0.1") 
+    chain = load_qa_chain(llm, chain_type="stuff")
+    
+    yield #for cleanup
 
 
-app = FastAPI()
+app = FastAPI(lifespan=lifespan)
+
+# app = FastAPI(title="Agentic RAG Document Processing")
 
 app.add_middleware(
     CORSMiddleware,
@@ -41,19 +74,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-load_vector_index()
-
-# Prepare class labels at startup
-dataset = ImageFolder("data/classification")
-class_labels = dataset.classes
+agentic_system = None
 
 
-train_document_classifier()
-
-os.makedirs("storage/docs", exist_ok=True)
-
-llm = Together(model="mistralai/Mistral-7B-Instruct-v0.1") 
-chain = load_qa_chain(llm, chain_type="stuff")
 
 @app.post("/upload-document/")
 async def upload_document(files: List[UploadFile] = File(...)):
@@ -83,6 +106,7 @@ async def upload_document(files: List[UploadFile] = File(...)):
                 page_text=extract_text(temp_img_path)
                 combined_text+=page_text+"\n\n"
                 os.remove(temp_img_path)
+                class_labels = ["forms", "invoice", "text"]
 
             #use first page for classification
             first_page_path=f"temp_{unique_id}_page_0.jpg"
@@ -143,44 +167,237 @@ async def upload_document(files: List[UploadFile] = File(...)):
         "message": f"{len(files)} document(s) processed successfully.",
         "results": results
     }
+    pass
 
+@app.post("/agentic-chat/")
+async def agentic_chat(
+    question:str=Form(...),
+    conversation_id:Optional[str]=Form(None),
+    use_simple_rag:bool=Form(False)
+):
+    """
+    Advanced agentic RAG chat endpoint with conversation memory and routing.
+    """
 
-@app.post("/chat/")
-async def chat_bot(question: str = Form(...)):
-    """
-    Perform hybrid search and LLM-based RAG via ask_question().
-    Includes robust error handling.
-    """
     try:
         if not question.strip():
-            raise HTTPException(status_code=400, detail="Question must not be empty.")
+            raise HTTPException(status_code=400, detail="Question cannot be empty.")
         
-        docs=hybrid_search(question)
-        if not docs:
-            return {"answer": "Sorry, I couldn’t find that in the uploaded documents."}
-
-        documents= [Document(page_content=doc["text"], metadata=doc["metadata"]) for doc in docs]
-
-        answer = chain.invoke({
-            "input_documents": documents,
-            "question": question
-        })
+        global agentic_system
+        if not agentic_system:
+            raise HTTPException(status_code=500, detail="Agentic RAG system not initialized.")
         
-        answer_text = answer.get("output_text")
-
-        if not answer_text.strip():
-            return {"answer": "Sorry, I couldn’t find that in the uploaded documents."}
-
-        return {"answer": answer_text}
-    
+        # Generate conversation ID if not provided
+        if not conversation_id:
+            conversation_id = str(uuid.uuid4())
+        
+        # Route the query (simple vs agentic)
+        if use_simple_rag:
+            result = agentic_system["query_router"]._simple_rag_query(question)
+        else:
+            result = agentic_system["query_router"].route_query(question)
+        
+        # Log the conversation
+        conversation_log = {
+            "conversation_id": conversation_id,
+            "timestamp": datetime.now().isoformat(),
+            "question": question,
+            "answer": result["answer"],
+            "query_type": result.get("query_type", "unknown"),
+            "success": result.get("success", True),
+            "metadata": {
+                "sources": result.get("sources", 0),
+                "use_simple_rag": use_simple_rag
+            }
+        }
+        
+        # Save conversation log
+        log_path = f"storage/conversations/{conversation_id}.jsonl"
+        with open(log_path, "a", encoding="utf-8") as f:
+            f.write(json.dumps(conversation_log) + "\n")
+        
+        return {
+            "conversation_id": conversation_id,
+            "answer": result["answer"],
+            "query_type": result.get("query_type", "unknown"),
+            "success": result.get("success", True),
+            "timestamp": conversation_log["timestamp"],
+            "metadata": conversation_log["metadata"]
+        }
+        
     except HTTPException as http_err:
         raise http_err
-
     except Exception as e:
-        logging.error("Unhandled error in /chat/: %s", traceback.format_exc())
+        logging.error("Error in agentic chat: %s", traceback.format_exc())
         return {
             "error": "An internal error occurred while processing your request.",
-            "details": str(e)
+            "details": str(e),
+            "success": False
+        }
+    
+
+@app.post("/chat-with-memory/")
+async def chat_with_memory(
+    question: str = Form(...),
+    conversation_id: str = Form(...)
+):
+    """
+    Chat endpoint that maintains conversation memory across requests.
+    """
+    try:
+        global agentic_system
+        
+        # Use the agentic RAG system with memory
+        result = agentic_system["agentic_rag"].query(question)
+        
+        return {
+            "conversation_id": conversation_id,
+            "answer": result["answer"],
+            "query_type": result.get("query_type", "unknown"),
+            "success": result.get("success", True),
+            "conversation_history": agentic_system["agentic_rag"].get_conversation_history()
+        }
+        
+    except Exception as e:
+        logging.error("Error in memory chat: %s", traceback.format_exc())
+        return {
+            "error": "An internal error occurred.",
+            "details": str(e),
+            "success": False
         }
 
+@app.post("/clear-conversation/")
+async def clear_conversation():
+    """Clear the conversation memory."""
+    try:
+        global agentic_system
+        agentic_system["agentic_rag"].clear_memory()
+        return {"message": "Conversation memory cleared successfully."}
+    except Exception as e:
+        return {"error": f"Failed to clear memory: {str(e)}"}
 
+@app.get("/conversation-history/")
+async def get_conversation_history():
+    """Get the current conversation history."""
+    try:
+        global agentic_system
+        history = agentic_system["agentic_rag"].get_conversation_history()
+        return {"conversation_history": history}
+    except Exception as e:
+        return {"error": f"Failed to get history: {str(e)}"}
+
+@app.post("/evaluate-answer/")
+async def evaluate_answer(
+    question: str = Form(...),
+    answer: str = Form(...),
+    context: str = Form(...)
+):
+    """
+    Evaluate the quality of an answer using self-reflection.
+    """
+    try:
+        global agentic_system
+        reflection = agentic_system["reflection"]
+        
+        evaluation = reflection.evaluate_answer(question, answer, context)
+        
+        return {
+            "evaluation": evaluation,
+            "timestamp": datetime.now().isoformat()
+        }
+        
+    except Exception as e:
+        return {
+            "error": f"Failed to evaluate answer: {str(e)}",
+            "success": False
+        }
+
+@app.get("/system-status/")
+async def get_system_status():
+    """Get the status of the agentic RAG system."""
+    try:
+        global agentic_system
+        
+        # Count documents
+        from vector_store import doc_metadata
+        
+        status = {
+            "system_initialized": agentic_system is not None,
+            "total_documents": len(doc_metadata) if doc_metadata else 0,
+            "available_tools": [tool.name for tool in agentic_system["agentic_rag"].tools] if agentic_system else [],
+            "memory_active": True,
+            "timestamp": datetime.now().isoformat()
+        }
+        
+        return status
+        
+    except Exception as e:
+        return {
+            "error": f"Failed to get system status: {str(e)}",
+            "system_initialized": False
+        }
+
+@app.get("/query-examples/")
+async def get_query_examples():
+    """Get example queries for different types of interactions."""
+    return {
+        "simple_queries": [
+            "What is the main topic of document X?",
+            "Find information about safety protocols",
+            "What documents do I have uploaded?"
+        ],
+        "complex_queries": [
+            "Compare the safety protocols mentioned in document A with those in document B and explain the key differences",
+            "Analyze the financial data across all uploaded documents and summarize the trends",
+            "What are the step-by-step procedures mentioned in the technical manual and how do they relate to the compliance requirements?"
+        ],
+        "metadata_queries": [
+            "Show me all PDF documents",
+            "Find documents uploaded today",
+            "What types of documents are available?"
+        ]
+    }
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
+
+
+
+# @app.post("/chat/")
+# async def chat_bot(question: str = Form(...)):
+#     """
+#     Perform hybrid search and LLM-based RAG via ask_question().
+#     Includes robust error handling.
+#     """
+#     try:
+#         if not question.strip():
+#             raise HTTPException(status_code=400, detail="Question must not be empty.")
+        
+#         docs=hybrid_search(question)
+#         if not docs:
+#             return {"answer": "Sorry, I couldn’t find that in the uploaded documents."}
+
+#         documents= [Document(page_content=doc["text"], metadata=doc["metadata"]) for doc in docs]
+
+#         answer = chain.invoke({
+#             "input_documents": documents,
+#             "question": question
+#         })
+        
+#         answer_text = answer.get("output_text")
+
+#         if not answer_text.strip():
+#             return {"answer": "Sorry, I couldn’t find that in the uploaded documents."}
+
+#         return {"answer": answer_text}
+    
+#     except HTTPException as http_err:
+#         raise http_err
+
+#     except Exception as e:
+#         logging.error("Unhandled error in /chat/: %s", traceback.format_exc())
+#         return {
+#             "error": "An internal error occurred while processing your request.",
+#             "details": str(e)
+#         }

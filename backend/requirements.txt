@@ -18,5 +18,12 @@ langchain-community
 torchvision
 faiss-cpu 
 sentence-transformers
+langgraph 
+langchain-openai
+together
+pydantic
+
+
+
 
 

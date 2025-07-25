@@ -1,0 +1,12 @@
+{
+  "document_type": "forms",
+  "raw_text": "Company XYZ - Salary Report - July 2025\n\nEmployee ID: EMP001 Name: Chamika Thennakoon Designation: Software Engineer\nBasic Salary: Rs. 111540 HRA: Rs. 22308 Bonus: Rs. 6931\n\nDeductions: Rs. 6849 Gross Salary: Rs. 140779 Net Salary: Rs. 133930\n\nEmployee ID: EMP002 Name: Nimal Perera Designation: QA Engineer\nBasic Salary: Rs. 102292 HRA: Rs. 20458 Bonus: Rs. 6870\n\nDeductions: Rs. 5936 Gross Salary: Rs. 129620 Net Salary: Rs. 123684\n\nEmployee ID: EMP003 Name: Suneth Gunawardana Designation: Data Analyst\nBasic Salary: Rs. 83557 HRA: Rs. 16711 Bonus: Rs. 7670\n\nDeductions: Rs. 3781 Gross Salary: Rs. 107938 Net Salary: Rs. 104157\n\nEmployee ID: EMP004 Name: Kamal Silva Designation: Project Manager\nBasic Salary: Rs. 93220 HRA: Rs. 18644 Bonus: Rs. 8253\n\nDeductions: Rs. 6950 Gross Salary: Rs. 120117 Net Salary: Rs. 113167\n\nEmployee ID: EMP005 Name: Ishara Fernando Designation: DevOps Engineer\nBasic Salary: Rs. 116038 HRA: Rs. 23207 Bonus: Rs. 10581\n\nDeductions: Rs. 5843 Gross Salary: Rs. 149826 Net Salary: Rs. 143983\n\n\n",
+  "structured_data": {
+    "names": [],
+    "organizations": [
+      "XYZ - Salary Report - July 2025"
+    ],
+    "locations": []
+  },
+  "created_at": "2025-07-25T12:45:53.942551"
+}
