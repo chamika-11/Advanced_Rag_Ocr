@@ -1,6 +1,14 @@
 [
   {
-    "doc_id": "99fe94c9-d91c-4f50-bc06-a0312c51cdc7",
+    "doc_id": "ddd8afc2-e11e-4354-86ab-80627d5b7675",
+    "text": "Company XYZ - Salary Report - July 2025 Employee ID: EMP001 Name: Chamika Thennakoon Designation: Software Engineer Basic Salary: Rs. 111540 HRA: Rs. 22308 Bonus: Rs. 6931 Deductions: Rs. 6849 Gross Salary: Rs. 140779 Net Salary: Rs. 133930 Employee ID: EMP002 Name: Nimal Perera Designation: QA Engineer Basic Salary: Rs. 102292 HRA: Rs. 20458 Bonus: Rs. 6870 Deductions: Rs. 5936 Gross Salary: Rs. 129620 Net Salary: Rs. 123684 Employee ID: EMP003 Name: Suneth Gunawardana Designation: Data Analyst Basic Salary: Rs. 83557 HRA: Rs. 16711 Bonus: Rs. 7670 Deductions: Rs. 3781 Gross Salary: Rs. 107938 Net Salary: Rs. 104157 Employee ID: EMP004 Name: Kamal Silva Designation: Project Manager Basic Salary: Rs. 93220 HRA: Rs. 18644 Bonus: Rs. 8253 Deductions: Rs. 6950 Gross Salary: Rs. 120117 Net Salary: Rs. 113167 Employee ID: EMP005 Name: Ishara Fernando Designation: DevOps Engineer Basic Salary: Rs. 116038 HRA: Rs. 23207 Bonus: Rs. 10581 Deductions: Rs. 5843 Gross Salary: Rs. 149826 Net Salary: Rs. 143983",
+    "metadata": {
+      "filename": "salary_report_sample.pdf",
+      "doc_type": "forms"
+    }
+  },
+  {
+    "doc_id": "b2ad91ac-9c8e-454e-b6f4-e65493c8995d",
     "text": "Company XYZ - Salary Report - July 2025 Employee ID: EMP001 Name: Chamika Thennakoon Designation: Software Engineer Basic Salary: Rs. 111540 HRA: Rs. 22308 Bonus: Rs. 6931 Deductions: Rs. 6849 Gross Salary: Rs. 140779 Net Salary: Rs. 133930 Employee ID: EMP002 Name: Nimal Perera Designation: QA Engineer Basic Salary: Rs. 102292 HRA: Rs. 20458 Bonus: Rs. 6870 Deductions: Rs. 5936 Gross Salary: Rs. 129620 Net Salary: Rs. 123684 Employee ID: EMP003 Name: Suneth Gunawardana Designation: Data Analyst Basic Salary: Rs. 83557 HRA: Rs. 16711 Bonus: Rs. 7670 Deductions: Rs. 3781 Gross Salary: Rs. 107938 Net Salary: Rs. 104157 Employee ID: EMP004 Name: Kamal Silva Designation: Project Manager Basic Salary: Rs. 93220 HRA: Rs. 18644 Bonus: Rs. 8253 Deductions: Rs. 6950 Gross Salary: Rs. 120117 Net Salary: Rs. 113167 Employee ID: EMP005 Name: Ishara Fernando Designation: DevOps Engineer Basic Salary: Rs. 116038 HRA: Rs. 23207 Bonus: Rs. 10581 Deductions: Rs. 5843 Gross Salary: Rs. 149826 Net Salary: Rs. 143983",
     "metadata": {
       "filename": "salary_report_sample.pdf",

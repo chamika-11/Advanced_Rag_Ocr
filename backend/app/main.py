@@ -33,6 +33,7 @@ from agentic_rag import create_agentic_rag_system
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from langchain_together import Together
+import re
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -169,16 +170,15 @@ async def upload_document(files: List[UploadFile] = File(...)):
     }
     pass
 
+##############################
 @app.post("/agentic-chat/")
 async def agentic_chat(
-    question:str=Form(...),
-    conversation_id:Optional[str]=Form(None),
-    use_simple_rag:bool=Form(False)
+    question: str = Form(...),
+    conversation_id: Optional[str] = Form(None)
 ):
     """
-    Advanced agentic RAG chat endpoint with conversation memory and routing.
+    Advanced agentic RAG chat endpoint with conversation memory.
     """
-
     try:
         if not question.strip():
             raise HTTPException(status_code=400, detail="Question cannot be empty.")
@@ -190,13 +190,10 @@ async def agentic_chat(
         # Generate conversation ID if not provided
         if not conversation_id:
             conversation_id = str(uuid.uuid4())
-        
-        # Route the query (simple vs agentic)
-        if use_simple_rag:
-            result = agentic_system["query_router"]._simple_rag_query(question)
-        else:
-            result = agentic_system["query_router"].route_query(question)
-        
+
+        # Use the agentic RAG system
+        result = agentic_system["query_router"].route_query(question)
+
         # Log the conversation
         conversation_log = {
             "conversation_id": conversation_id,
@@ -206,25 +203,24 @@ async def agentic_chat(
             "query_type": result.get("query_type", "unknown"),
             "success": result.get("success", True),
             "metadata": {
-                "sources": result.get("sources", 0),
-                "use_simple_rag": use_simple_rag
+                "sources": result.get("sources", 0)
             }
         }
-        
+
         # Save conversation log
         log_path = f"storage/conversations/{conversation_id}.jsonl"
         with open(log_path, "a", encoding="utf-8") as f:
             f.write(json.dumps(conversation_log) + "\n")
-        
+
         return {
             "conversation_id": conversation_id,
             "answer": result["answer"],
             "query_type": result.get("query_type", "unknown"),
             "success": result.get("success", True),
             "timestamp": conversation_log["timestamp"],
-            "metadata": conversation_log["metadata"]
+            "sources": result.get("sources", 0)
         }
-        
+
     except HTTPException as http_err:
         raise http_err
     except Exception as e:
@@ -234,6 +230,7 @@ async def agentic_chat(
             "details": str(e),
             "success": False
         }
+
     
 
 @app.post("/chat-with-memory/")
@@ -361,43 +358,3 @@ async def get_query_examples():
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
-
-
-
-# @app.post("/chat/")
-# async def chat_bot(question: str = Form(...)):
-#     """
-#     Perform hybrid search and LLM-based RAG via ask_question().
-#     Includes robust error handling.
-#     """
-#     try:
-#         if not question.strip():
-#             raise HTTPException(status_code=400, detail="Question must not be empty.")
-        
-#         docs=hybrid_search(question)
-#         if not docs:
-#             return {"answer": "Sorry, I couldn’t find that in the uploaded documents."}
-
-#         documents= [Document(page_content=doc["text"], metadata=doc["metadata"]) for doc in docs]
-
-#         answer = chain.invoke({
-#             "input_documents": documents,
-#             "question": question
-#         })
-        
-#         answer_text = answer.get("output_text")
-
-#         if not answer_text.strip():
-#             return {"answer": "Sorry, I couldn’t find that in the uploaded documents."}
-
-#         return {"answer": answer_text}
-    
-#     except HTTPException as http_err:
-#         raise http_err
-
-#     except Exception as e:
-#         logging.error("Unhandled error in /chat/: %s", traceback.format_exc())
-#         return {
-#             "error": "An internal error occurred while processing your request.",
-#             "details": str(e)
-#         }

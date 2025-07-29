@@ -80,6 +80,29 @@ class AgenticRAG:
 
         self.agent=self._initialize_agent()
 
+
+    def vector_only_query(self, question: str) -> Dict:
+        docs = hybrid_search(question, top_k=5)
+
+        if not docs:
+            return {
+                "answer": "No relevant documents found.",
+                "query_type": "vector_db_only",
+                "success": False,
+                "sources": 0
+            }
+
+        # Return raw retrieved text (no LLM involved)
+        result = "\n\n".join([f"Document {i+1}:\n{doc['text']}" for i, doc in enumerate(docs[:3])])
+        
+        return {
+            "answer": result,
+            "query_type": "vector_db_only",
+            "success": True,
+            "sources": len(docs)
+        }
+
+
     def _intialize_tools(self)-> List[BaseTool]:
         """Initialize all available tools for the agent"""
         return [
@@ -232,32 +255,38 @@ class QueryRouter:
         return any(indicators)
     
     def _simple_rag_query(self, question: str) -> Dict[str, Any]:
-        """Handle simple queries with traditional RAG."""
+        """Handle simple queries using vector store content with LLM generation."""
         try:
             docs = hybrid_search(question, top_k=3)
             if not docs:
                 return {
-                    "answer": "I couldn't find relevant information in the uploaded documents.",
-                    "query_type": "simple",
-                    "success": False
+                    "answer": "No relevant documents found in the vector database.",
+                    "query_type": "simple_vector_only",
+                    "success": False,
+                    "sources": 0
                 }
             
-            context = "\n\n".join([doc["text"] for doc in docs])
+            # Concatenate retrieved chunks as context
+            context = "\n\n".join([
+                f"Document {i+1}: {doc['text']}" for i, doc in enumerate(docs)
+            ])
             
-            prompt = f"""Based on the following context, answer the question concisely:
+            # Generate answer using LLM with retrieved context
+            prompt = f"""Based on the following document content, please answer the question.
 
-Context:
-{context}
+    Context:
+    {context}
 
-Question: {question}
+    Question: {question}
 
-Answer:"""
+    Answer:"""
             
-            response = self.llm(prompt)
-            
+            # Generate answer using the LLM
+            answer = self.llm(prompt)
+
             return {
-                "answer": response,
-                "query_type": "simple",
+                "answer": answer,
+                "query_type": "simple_rag",
                 "success": True,
                 "sources": len(docs)
             }
@@ -265,9 +294,10 @@ Answer:"""
         except Exception as e:
             return {
                 "answer": f"Error processing query: {str(e)}",
-                "query_type": "simple",
+                "query_type": "simple_rag",
                 "success": False
             }
+
 
 # Self-Reflection and Correction Component
 class SelfReflection:
