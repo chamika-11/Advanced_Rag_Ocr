@@ -1,9 +1,17 @@
 [
   {
-    "doc_id": "99fe94c9-d91c-4f50-bc06-a0312c51cdc7",
-    "text": "Company XYZ - Salary Report - July 2025 Employee ID: EMP001 Name: Chamika Thennakoon Designation: Software Engineer Basic Salary: Rs. 111540 HRA: Rs. 22308 Bonus: Rs. 6931 Deductions: Rs. 6849 Gross Salary: Rs. 140779 Net Salary: Rs. 133930 Employee ID: EMP002 Name: Nimal Perera Designation: QA Engineer Basic Salary: Rs. 102292 HRA: Rs. 20458 Bonus: Rs. 6870 Deductions: Rs. 5936 Gross Salary: Rs. 129620 Net Salary: Rs. 123684 Employee ID: EMP003 Name: Suneth Gunawardana Designation: Data Analyst Basic Salary: Rs. 83557 HRA: Rs. 16711 Bonus: Rs. 7670 Deductions: Rs. 3781 Gross Salary: Rs. 107938 Net Salary: Rs. 104157 Employee ID: EMP004 Name: Kamal Silva Designation: Project Manager Basic Salary: Rs. 93220 HRA: Rs. 18644 Bonus: Rs. 8253 Deductions: Rs. 6950 Gross Salary: Rs. 120117 Net Salary: Rs. 113167 Employee ID: EMP005 Name: Ishara Fernando Designation: DevOps Engineer Basic Salary: Rs. 116038 HRA: Rs. 23207 Bonus: Rs. 10581 Deductions: Rs. 5843 Gross Salary: Rs. 149826 Net Salary: Rs. 143983",
+    "doc_id": "8ab12bed-2a55-443c-8d7f-635019b72072",
+    "text": "Large Language Models (LLMs) are a class of machine learning models designed to understand, generate, and manipulate human language. These models are trained on vast amounts of text data and can perform a wide range of natural language processing (NLP) tasks, such as translation, summarization, question answering, and text generation. LLMs are built using deep learning architectures, most commonly the Transformer architecture, which was introduced in the paper \"Attention is All You Need\" by Vaswani et al. in 2017. Transformers use self-attention mechanisms to capture relationships between words in a sequence, regardless of their distance from one another. Some of the most notable LLMs include OpenAl's GPT (Generative Pretrained Transformer) series, Google's BERT (Bidirectional Encoder Representations from Transformers), and Meta's LLaMA (Large Language Model Meta Al). These models differ in their training approaches, tokenization strategies, and use cases. Training LLMs requires significant computational resources and access to large datasets. Once trained, LLMs can be fine-tuned for specific applications or used as-is in a zero-shot or few-shot learning context. One of the key strengths of LLMs is their ability to generalize knowledge across various tasks and domains. However, they also pose challenges, including ethical concerns around bias, hallucination, misinformation, and the environmental cost of training large-scale models. To address these concerns, the research community has focused on developing smaller, more efficient models (like DistiIBERT, TinyGPT), techniques for responsible Al use, and frameworks for explainability and interpretability. In recent years, LLMs have been integrated into real-world applications such as chatbots, code generation tools, virtual assistants, and even creative writing assistants. Their capabilities continue to grow, pushing the boundaries of what Al can achieve in human-computer interaction. As LLMs evolve, new paradigms such as Retrieval-Augmented Generation (RAG), multimodal learning, and agent-based reasoning are gaining traction, enabling these models to incorporate external knowledge, handle",
     "metadata": {
-      "filename": "salary_report_sample.pdf",
+      "filename": "LLM_Overview.pdf",
+      "doc_type": "forms"
+    }
+  },
+  {
+    "doc_id": "7b962459-79a3-4c69-91fe-4cef90df67f2",
+    "text": "multiple data types, and perform more complex reasoning tasks. In conclusion, large language models represent a major breakthrough in artificial intelligence, transforming the way we interact with technology and understand language.",
+    "metadata": {
+      "filename": "LLM_Overview.pdf",
       "doc_type": "forms"
     }
   }
