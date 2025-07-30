@@ -11,11 +11,29 @@ function AgentRAGChat() {
     if (!question.trim()) return;
 
     try {
-      const result = await callAPI('/agentic-chat/', 'POST', { question });
-      setAnswer(result);
-      setQuestion('');
+      const formData = new FormData();
+      formData.append('question', question);
+      
+      const result = await callAPI('/agentic-chat/', 'POST', formData);
+      
+      if (result && typeof result === 'object') {
+        // Check if there's an error in the response
+        if (result.error) {
+          throw new Error(result.error);
+        }
+        
+        setAnswer({
+          answer: result.answer || '',
+          sources: Array.isArray(result.sources) ? result.sources : [],
+          confidence: typeof result.confidence === 'number' ? result.confidence : null,
+          query_type: result.query_type || 'unknown',
+          timestamp: result.timestamp || new Date().toISOString()
+        });
+        setQuestion('');
+      }
     } catch (err) {
-      // Error handled by useAPI hook
+      console.error('Error in handleSubmit:', err);
+      // Let the useAPI hook handle the error display
     }
   };
 
@@ -30,7 +48,7 @@ function AgentRAGChat() {
         <h2 className="text-2xl font-bold text-slate-800">Ask a Question</h2>
       </div>
 
-      {error && <Alert type="error" message={error} />}
+      {error && <Alert type="error" message={error.message || 'An error occurred'} />}
 
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="relative">
@@ -91,7 +109,7 @@ function AgentRAGChat() {
 
           <div className="bg-gradient-to-r from-slate-50 to-white rounded-xl p-5 border border-slate-200 shadow-sm">
             <p className="text-slate-700 whitespace-pre-wrap leading-relaxed">
-              {answer.response}
+              {typeof answer.answer === 'string' ? answer.answer : JSON.stringify(answer.answer)}
             </p>
 
             {answer.sources && answer.sources.length > 0 && (

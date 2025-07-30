@@ -170,7 +170,7 @@ async def upload_document(files: List[UploadFile] = File(...)):
     }
     pass
 
-##############################
+
 @app.post("/agentic-chat/")
 async def agentic_chat(
     question: str = Form(...),
@@ -214,7 +214,7 @@ async def agentic_chat(
 
         return {
             "conversation_id": conversation_id,
-            "answer": result["answer"],
+            "answer": str(result.get("answer", "No answer found.")),
             "query_type": result.get("query_type", "unknown"),
             "success": result.get("success", True),
             "timestamp": conversation_log["timestamp"],
@@ -225,89 +225,13 @@ async def agentic_chat(
         raise http_err
     except Exception as e:
         logging.error("Error in agentic chat: %s", traceback.format_exc())
-        return {
-            "error": "An internal error occurred while processing your request.",
-            "details": str(e),
-            "success": False
-        }
-
-    
-
-@app.post("/chat-with-memory/")
-async def chat_with_memory(
-    question: str = Form(...),
-    conversation_id: str = Form(...)
-):
-    """
-    Chat endpoint that maintains conversation memory across requests.
-    """
-    try:
-        global agentic_system
-        
-        # Use the agentic RAG system with memory
-        result = agentic_system["agentic_rag"].query(question)
-        
-        return {
-            "conversation_id": conversation_id,
-            "answer": result["answer"],
-            "query_type": result.get("query_type", "unknown"),
-            "success": result.get("success", True),
-            "conversation_history": agentic_system["agentic_rag"].get_conversation_history()
-        }
-        
-    except Exception as e:
-        logging.error("Error in memory chat: %s", traceback.format_exc())
-        return {
-            "error": "An internal error occurred.",
-            "details": str(e),
-            "success": False
-        }
-
-@app.post("/clear-conversation/")
-async def clear_conversation():
-    """Clear the conversation memory."""
-    try:
-        global agentic_system
-        agentic_system["agentic_rag"].clear_memory()
-        return {"message": "Conversation memory cleared successfully."}
-    except Exception as e:
-        return {"error": f"Failed to clear memory: {str(e)}"}
-
-@app.get("/conversation-history/")
-async def get_conversation_history():
-    """Get the current conversation history."""
-    try:
-        global agentic_system
-        history = agentic_system["agentic_rag"].get_conversation_history()
-        return {"conversation_history": history}
-    except Exception as e:
-        return {"error": f"Failed to get history: {str(e)}"}
-
-@app.post("/evaluate-answer/")
-async def evaluate_answer(
-    question: str = Form(...),
-    answer: str = Form(...),
-    context: str = Form(...)
-):
-    """
-    Evaluate the quality of an answer using self-reflection.
-    """
-    try:
-        global agentic_system
-        reflection = agentic_system["reflection"]
-        
-        evaluation = reflection.evaluate_answer(question, answer, context)
-        
-        return {
-            "evaluation": evaluation,
-            "timestamp": datetime.now().isoformat()
-        }
-        
-    except Exception as e:
-        return {
-            "error": f"Failed to evaluate answer: {str(e)}",
-            "success": False
-        }
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "message": "An internal error occurred while processing your request.",
+                "error": str(e)
+            }
+        )
 
 @app.get("/system-status/")
 async def get_system_status():

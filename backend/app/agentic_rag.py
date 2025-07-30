@@ -161,7 +161,7 @@ Question: {input}
             verbose=True,
             handle_parsing_errors=True,
             max_iterations=5,
-            early_stopping_method="generate"
+            early_stopping_method="force"
         )
     
 
@@ -179,10 +179,11 @@ Question: {input}
         try:
             query_type=self._classify_query(question)
 
-            response=self.agent.agent.invoke({
-                "input":question,
-                "chat_history":self.memory.chat_memory.messages
+            response = self.agent.invoke({
+                "input": question,
+                "chat_history": self.memory.chat_memory.messages
             })
+
 
             return {
                 "answer": response["output"],
