@@ -2,6 +2,7 @@ from sentence_transformers import SentenceTransformer
 import faiss
 import os
 import json
+import numpy as np
 
 #load the sentence transformer model
 embedding_model=SentenceTransformer('all-MiniLM-L6-v2')
