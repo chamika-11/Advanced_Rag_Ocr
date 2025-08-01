@@ -23,7 +23,7 @@ export const useAPI = () => {
             const formData = new FormData();
             Object.keys(data).forEach(key => {
             if (data[key] !== null && data[key] !== undefined) {
-            formData.append(key, String(data[key])); // ✅ ensure string conversion
+            formData.append(key, String(data[key])); 
             }
         });
         requestData = formData;

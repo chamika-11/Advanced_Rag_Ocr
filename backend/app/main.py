@@ -132,35 +132,27 @@ async def upload_document(files: List[UploadFile] = File(...)):
 
         structured_data=extract_structured_data(combined_text)
 
-        doc_id=str(uuid.uuid4())
+        doc_id = str(uuid.uuid4())
 
-
-        chunks=chunk_text(combined_text,max_words=300)
+        chunks = chunk_text(combined_text, max_words=300)
         for chunk in chunks:
-            store_document(str(uuid.uuid4()),chunk,metadata={
-                "filename":file.filename,
-                "doc_type":doc_type,
+            store_document(doc_id, chunk, metadata={  # ✅ use same doc_id
+                "filename": file.filename,
+                "doc_type": doc_type,
             })
 
         #store permanetly
         filename = f"{doc_type}_{doc_id}.json"
-        filepath=os.path.join("storage/docs",filename)
-
-        
+        filepath = os.path.join("storage/docs", filename)
 
         with open(filepath, "w", encoding="utf-8") as f:
             json.dump({
-                "document_type":doc_type,
-                "raw_text":combined_text,
-                "structured_data":structured_data,
+                "doc_id": doc_id,
+                "document_type": doc_type,
+                "raw_text": combined_text,
+                "structured_data": structured_data,
                 "created_at": datetime.now().isoformat()
-            },f,ensure_ascii=False,indent=2)
-
-            results.append({
-                "file":file.filename,
-                "document_type":doc_type,
-                "structured_data":structured_data
-            })
+            }, f, ensure_ascii=False, indent=2)
             
     save_vector_index()
     
@@ -233,51 +225,171 @@ async def agentic_chat(
             }
         )
 
+
 @app.get("/system-status/")
 async def get_system_status():
     """Get the status of the agentic RAG system."""
     try:
         global agentic_system
-        
-        # Count documents
         from vector_store import doc_metadata
-        
+
+        system_ready = agentic_system is not None and "agentic_rag" in agentic_system
+        available_tools = []
+        if system_ready:
+            try:
+                available_tools = [tool.name for tool in agentic_system["agentic_rag"].tools]
+            except Exception:
+                available_tools = []
+
         status = {
-            "system_initialized": agentic_system is not None,
+            "system_initialized": system_ready,
             "total_documents": len(doc_metadata) if doc_metadata else 0,
-            "available_tools": [tool.name for tool in agentic_system["agentic_rag"].tools] if agentic_system else [],
+            "available_tools": available_tools,
             "memory_active": True,
             "timestamp": datetime.now().isoformat()
         }
-        
         return status
-        
+
     except Exception as e:
+        import traceback
+        print("System Status Error:", traceback.format_exc())
         return {
             "error": f"Failed to get system status: {str(e)}",
-            "system_initialized": False
+            "system_initialized": False,
+            "total_documents": 0,
+            "available_tools": [],
+            "memory_active": False
         }
 
-@app.get("/query-examples/")
-async def get_query_examples():
-    """Get example queries for different types of interactions."""
-    return {
-        "simple_queries": [
-            "What is the main topic of document X?",
-            "Find information about safety protocols",
-            "What documents do I have uploaded?"
-        ],
-        "complex_queries": [
-            "Compare the safety protocols mentioned in document A with those in document B and explain the key differences",
-            "Analyze the financial data across all uploaded documents and summarize the trends",
-            "What are the step-by-step procedures mentioned in the technical manual and how do they relate to the compliance requirements?"
-        ],
-        "metadata_queries": [
-            "Show me all PDF documents",
-            "Find documents uploaded today",
-            "What types of documents are available?"
-        ]
-    }
+
+@app.get("/search/")
+async def search_documents(query: str, top_k: int = 5):
+    """
+    Semantic search across all uploaded documents using FAISS.
+    Returns the top_k most relevant chunks.
+    """
+    try:
+        from vector_store import index, embedding_model, doc_metadata
+
+        if not query.strip():
+            raise HTTPException(status_code=400, detail="Query cannot be empty.")
+
+        # Convert query into embedding
+        query_vector = embedding_model.encode([query])
+
+        # Search in FAISS index
+        distances, indices = index.search(query_vector, top_k)
+
+        results = []
+        for rank, idx in enumerate(indices[0]):
+            if idx == -1 or idx >= len(doc_metadata):
+                continue
+            metadata = doc_metadata[idx]
+            results.append({
+                "rank": rank + 1,
+                "doc_id": metadata.get("doc_id"),
+                "filename": metadata.get("filename"),
+                "document_type": metadata.get("doc_type", "unknown"),
+                "score": float(distances[0][rank]),
+            })
+
+        return {
+            "query": query,
+            "results_found": len(results),
+            "results": results
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error in semantic search: {str(e)}")
+    
+
+@app.get("/get-document/{doc_id}")
+async def get_document(doc_id: str):
+    """
+    Retrieve full details of a document by doc_id.
+    Includes raw text, structured data, metadata, and timestamps.
+    """
+    try:
+        found_file = None
+        for filename in os.listdir("storage/docs"):
+            if doc_id in filename:   # match by substring
+                found_file = filename
+                break
+
+        if not found_file:
+            raise HTTPException(status_code=404, detail=f"Document with ID {doc_id} not found")
+
+        filepath = os.path.join("storage/docs", found_file)
+        with open(filepath, "r", encoding="utf-8") as f:
+            doc_data = json.load(f)
+
+        # Load vector metadata if available
+        from vector_store import doc_metadata
+        vector_meta = next((m for m in doc_metadata if m.get("doc_id") == doc_id), None)
+
+        return {
+            "doc_id": doc_id,
+            "filename": found_file,
+            "document_type": doc_data.get("document_type", "unknown"),
+            "raw_text": doc_data.get("raw_text", ""),
+            "structured_data": doc_data.get("structured_data", {}),
+            "created_at": doc_data.get("created_at"),
+            "metadata": vector_meta or {}
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        print("Error in get_document:", traceback.format_exc())
+        raise HTTPException(status_code=500, detail=f"Error retrieving document: {str(e)}")
+    
+
+@app.get("/keyword-search/")
+async def keyword_search(keyword: str):
+    """
+    Search documents for a keyword and return only the matching snippets.
+    """
+    try:
+        results = []
+        keyword_lower = keyword.lower()
+
+        for filename in os.listdir("storage/docs"):
+            filepath = os.path.join("storage/docs", filename)
+
+            with open(filepath, "r", encoding="utf-8") as f:
+                doc_data = json.load(f)
+
+            raw_text = doc_data.get("raw_text", "")
+            raw_text_lower = raw_text.lower()
+
+            if keyword_lower in raw_text_lower:
+                # Extract matching sentences/snippets
+                pattern = re.compile(r".{0,50}" + re.escape(keyword_lower) + r".{0,50}", re.IGNORECASE)
+                matches = pattern.findall(raw_text)
+
+                results.append({
+                    "doc_id": doc_data.get("doc_id"),
+                    "filename": filename,
+                    "document_type": doc_data.get("document_type", "unknown"),
+                    "created_at": doc_data.get("created_at"),
+                    "matches": matches,  # show only relevant snippets
+                    "structured_data": doc_data.get("structured_data", {})
+                })
+
+        if not results:
+            raise HTTPException(status_code=404, detail=f"No documents found containing '{keyword}'")
+
+        return {
+            "keyword": keyword,
+            "results_found": len(results),
+            "results": results
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error in keyword search: {str(e)}")
+
+
 
 if __name__ == "__main__":
     import uvicorn
