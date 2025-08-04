@@ -22,7 +22,7 @@ from chunk import chunk_text
 from vector_store import save_vector_index, store_document,hybrid_search
 import uuid
 from langchain.docstore.document import Document
-from langchain_community.llms import Together
+from langchain_together import Together
 from langchain.chains.question_answering import load_qa_chain
 from fastapi import Form
 from vector_store import load_vector_index
@@ -57,7 +57,7 @@ async def lifespan(app: FastAPI):
     
     logging.info("Agentic RAG system initialized successfully")
 
-    llm = Together(model="mistralai/Mistral-7B-Instruct-v0.1") 
+    llm = Together(model="meta-llama/Llama-3-8b-instruct") 
     chain = load_qa_chain(llm, chain_type="stuff")
     
     yield #for cleanup

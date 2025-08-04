@@ -6,7 +6,8 @@ from datetime import datetime
 from dataclasses import dataclass
 from langchain.agents import AgentExecutor, create_react_agent
 from langchain.tools import Tool, BaseTool
-from langchain_community.llms import Together
+from langchain_together import Together
+
 from langchain.prompts import PromptTemplate
 from langchain.schema import Document
 from langchain.memory import ConversationBufferWindowMemory
@@ -65,7 +66,7 @@ class DocumentMetadataSearchTool(BaseTool):
 class AgenticRAG:
     def __init__(self):
         self.llm = Together(
-            model="mistralai/Mistral-7B-Instruct-v0.1",
+            model="meta-llama/Llama-3-8b-instruct",
             temperature=0.1,
             max_tokens=1024
         )
