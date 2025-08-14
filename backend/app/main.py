@@ -85,82 +85,110 @@ async def upload_document(files: List[UploadFile] = File(...)):
     Upload multiple documents (PDFs or images). For PDFs, process all pages.
     Extract raw text + structured data for each, and save as individual JSONs.
     """
-    results =[]
+    results = []
 
     for file in files:
-        file_bytes = await file.read()
-        ext = file.filename.split(".")[-1].lower()
-        #giving unique id per file
-        unique_id = str(uuid.uuid4())
+        try:
+            file_bytes = await file.read()
+            ext = file.filename.split(".")[-1].lower()
+            # giving unique id per file
+            unique_id = str(uuid.uuid4())
 
-        combined_text=""
+            combined_text = ""
+            doc_type = "unknown"  # Initialize doc_type
+            class_labels = ["forms", "invoice", "text"]
 
-        if ext=="pdf":
-            images=convert_from_bytes(file_bytes,poppler_path="C:/Program Files/poppler-24.08.0/Library/bin")
-            for i,img in enumerate(images):
-                temp_img_path=f"tempFile_{unique_id}_page_{i}.jpg"
-                img.save(temp_img_path,"JPEG")
+            if ext == "pdf":
+                images = convert_from_bytes(file_bytes, poppler_path="C:/Program Files/poppler-24.08.0/Library/bin")
+                for i, img in enumerate(images):
+                    temp_img_path = f"tempFile_{unique_id}_page_{i}.jpg"
+                    img.save(temp_img_path, "JPEG")
 
-                preprocessed=preprocess_image(temp_img_path)
-                cv2.imwrite(temp_img_path,preprocessed)
+                    preprocessed = preprocess_image(temp_img_path)
+                    cv2.imwrite(temp_img_path, preprocessed)
 
-                page_text=extract_text(temp_img_path)
-                combined_text+=page_text+"\n\n"
+                    page_text = extract_text(temp_img_path)
+                    combined_text += page_text + "\n\n"
+                    os.remove(temp_img_path)
+
+                # use first page for classification
+                first_page_path = f"temp_{unique_id}_page_0.jpg"
+                images[0].save(first_page_path, "JPEG")
+                doc_type = predict_document_type(first_page_path, class_labels=class_labels)
+                os.remove(first_page_path)
+
+            else:
+                temp_img_path = f"temp_{unique_id}.jpg"
+
+                with open(temp_img_path, "wb") as f:
+                    f.write(file_bytes)
+
+                preprocessed = preprocess_image(temp_img_path)
+                cv2.imwrite(temp_img_path, preprocessed)
+
+                combined_text = extract_text(temp_img_path)
+                doc_type = predict_document_type(temp_img_path, class_labels=class_labels)
+
                 os.remove(temp_img_path)
-                class_labels = ["forms", "invoice", "text"]
 
-            #use first page for classification
-            first_page_path=f"temp_{unique_id}_page_0.jpg"
-            images[0].save(first_page_path,"JPEG")
-            doc_type=predict_document_type(first_page_path,class_labels=class_labels)
-            os.remove(first_page_path)
+            # Extract structured data
+            structured_data = extract_structured_data(combined_text)
 
-        else:
-            temp_img_path=f"temp_{unique_id}.jpg"
+            # Generate document ID
+            doc_id = str(uuid.uuid4())
 
-            with open(temp_img_path,"wb") as f:
-                f.write(file_bytes)
+            # Store in vector database
+            chunks = chunk_text(combined_text, max_words=300)
+            for chunk in chunks:
+                store_document(doc_id, chunk, metadata={  
+                    "filename": file.filename,
+                    "doc_type": doc_type,
+                })
 
-            preprocessed=preprocess_image(temp_img_path)
-            cv2.imwrite(temp_img_path,preprocessed)
+            # Store permanently
+            filename = f"{doc_type}_{doc_id}.json"
+            filepath = os.path.join("storage/docs", filename)
 
-            combined_text=extract_text(temp_img_path)
-            doc_type = predict_document_type(temp_img_path, class_labels=class_labels)
+            # Ensure directory exists
+            os.makedirs(os.path.dirname(filepath), exist_ok=True)
 
-            os.remove(temp_img_path)
-
-
-        structured_data=extract_structured_data(combined_text)
-
-        doc_id = str(uuid.uuid4())
-
-        chunks = chunk_text(combined_text, max_words=300)
-        for chunk in chunks:
-            store_document(doc_id, chunk, metadata={  # ✅ use same doc_id
-                "filename": file.filename,
-                "doc_type": doc_type,
-            })
-
-        #store permanetly
-        filename = f"{doc_type}_{doc_id}.json"
-        filepath = os.path.join("storage/docs", filename)
-
-        with open(filepath, "w", encoding="utf-8") as f:
-            json.dump({
+            document_data = {
                 "doc_id": doc_id,
                 "document_type": doc_type,
                 "raw_text": combined_text,
                 "structured_data": structured_data,
                 "created_at": datetime.now().isoformat()
-            }, f, ensure_ascii=False, indent=2)
-            
+            }
+
+            with open(filepath, "w", encoding="utf-8") as f:
+                json.dump(document_data, f, ensure_ascii=False, indent=2)
+
+            # Add result to results list - THIS WAS MISSING!
+            results.append({
+                "filename": file.filename,
+                "doc_id": doc_id,
+                "document_type": doc_type,
+                "structured_data": structured_data,
+                "text_preview": combined_text[:200] + "..." if len(combined_text) > 200 else combined_text,
+                "status": "success",
+                "filepath": filepath
+            })
+
+        except Exception as e:
+            # Add error result if processing fails
+            results.append({
+                "filename": file.filename,
+                "status": "error",
+                "error_message": str(e)
+            })
+
+    # Save vector index
     save_vector_index()
     
     return {
         "message": f"{len(files)} document(s) processed successfully.",
         "results": results
     }
-    pass
 
 
 @app.post("/agentic-chat/")
