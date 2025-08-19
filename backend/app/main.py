@@ -35,6 +35,10 @@ from fastapi import FastAPI
 from langchain_together import Together
 import re
 
+from langchain.chains.combine_documents import create_stuff_documents_chain
+from langchain.chains import create_retrieval_chain
+from langchain_core.prompts import ChatPromptTemplate
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Initialize everything on startup."""
@@ -57,10 +61,31 @@ async def lifespan(app: FastAPI):
     
     logging.info("Agentic RAG system initialized successfully")
 
-    llm = Together(model="meta-llama/Llama-3-8b-instruct") 
-    chain = load_qa_chain(llm, chain_type="stuff")
+    llm = Together(
+        model="meta-llama/Llama-3-8b-instruct",
+        max_tokens=1024,  # Added to prevent warning
+        temperature=0.7
+    ) 
     
-    yield #for cleanup
+    # Create the new chain using modern LangChain patterns
+    system_prompt = (
+        "You are an assistant for question-answering tasks. "
+        "Use the following pieces of retrieved context to answer "
+        "the question. If you don't know the answer, say that you "
+        "don't know. Use three sentences maximum and keep the "
+        "answer concise."
+        "\n\n"
+        "{context}"
+    )
+    
+    prompt = ChatPromptTemplate.from_messages([
+        ("system", system_prompt),
+        ("human", "{input}"),
+    ])
+    
+    qa_chain = create_stuff_documents_chain(llm, prompt)
+    
+    yield
 
 
 app = FastAPI(lifespan=lifespan)
