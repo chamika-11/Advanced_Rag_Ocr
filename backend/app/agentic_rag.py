@@ -18,6 +18,9 @@ from pydantic import BaseModel, Field
 from vector_store import hybrid_search, doc_metadata
 from dotenv import load_dotenv
 
+from langchain_core.chat_history import InMemoryChatMessageHistory
+from langchain_core.messages import HumanMessage, AIMessage
+
 load_dotenv()
 
 
@@ -69,11 +72,14 @@ class AgenticRAG:
             max_tokens=1024
         )
         
-        self.memory = ConversationBufferWindowMemory(
-            k=5,
-            memory_key="chat_history",
-            return_messages=True
-        )
+        # self.memory = ConversationBufferWindowMemory(
+        #     k=5,
+        #     memory_key="chat_history",
+        #     return_messages=True
+        # )
+
+        self.chat_history = InMemoryChatMessageHistory()
+        self.memory_window_size = 5 
 
         self.tools=self._intialize_tools()
 
@@ -156,7 +162,6 @@ Question: {input}
         return AgentExecutor(
             agent=agent,
             tools=self.tools,
-            memory=self.memory,
             verbose=True,
             handle_parsing_errors=True,
             max_iterations=5,
