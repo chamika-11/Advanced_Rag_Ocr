@@ -63,7 +63,7 @@ async def lifespan(app: FastAPI):
 
     llm = Together(
         model="meta-llama/Llama-3-8b-instruct",
-        max_tokens=1024,  # Added to prevent warning
+        max_tokens=1024,  
         temperature=0.7
     ) 
     
@@ -139,7 +139,7 @@ async def upload_document(files: List[UploadFile] = File(...)):
                 # use first page for classification
                 first_page_path = f"temp_{unique_id}_page_0.jpg"
                 images[0].save(first_page_path, "JPEG")
-                doc_type = predict_document_type(first_page_path, class_labels=class_labels)
+                doc_type = predict_document_type(first_page_path)
                 os.remove(first_page_path)
 
             else:
@@ -152,7 +152,7 @@ async def upload_document(files: List[UploadFile] = File(...)):
                 cv2.imwrite(temp_img_path, preprocessed)
 
                 combined_text = extract_text(temp_img_path)
-                doc_type = predict_document_type(temp_img_path, class_labels=class_labels)
+                doc_type = predict_document_type(temp_img_path)
 
                 os.remove(temp_img_path)
 
